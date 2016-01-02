@@ -1,0 +1,63 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.github.cjnygard.mvn</groupId>
+  <artifactId>rest-maven-plugin-test</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>REST Request Maven Plugin Test</name>
+
+  <properties>
+    <rest-maven-plugin.version>0.1.0-SNAPSHOT</rest-maven-plugin.version>
+  </properties>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <includes>
+          <include>**/*.md</include>
+        </includes>
+        <filtering>false</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>com.github.cjnygard.mvn</groupId>
+        <artifactId>rest-maven-plugin</artifactId>
+        <version>${rest-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>rest-request</goal>
+            </goals>
+            <configuration>
+              <endpoint>http://docker:3001/md2pdf</endpoint>
+              <resource>v1/api</resource>
+              <fileMappers>
+                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                  <targetExtension>.pdf</targetExtension>
+                </fileMapper>
+                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.RegExpFileMapper">
+                  <pattern>test</pattern>
+                  <replacement>result</replacement>
+                </fileMapper>
+              </fileMappers>
+              <fileset>
+                <directory>${project.resources[0].directory}</directory>
+                <includes>
+                  <include>*.md</include>
+                </includes>
+              </fileset>
+              <outputDir>${project.build.directory}/docs</outputDir>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+
+</project>
