@@ -59,6 +59,14 @@ import org.apache.maven.settings.Settings;
 /**
  * Make REST request, sending file contents and saving results to a file.
  *
+ * This plugin is meant to provide an easy way to interface to REST
+ * services via the POST operation to send data files to the REST URL
+ * and retrieve (and store) the results.
+ *
+ * One typical example is to send *.md documentation files to a
+ * markdown-to-pdf conversion service (see
+ * http://github.com/cjnygard/md2pdf) and store the resulting *.pdf
+ * file locally.
  */
 @Mojo( name = "rest-request" )
 public class Plugin extends AbstractMojo
@@ -160,6 +168,8 @@ public class Plugin extends AbstractMojo
     /**
      * Base directory for build.
      *
+     * Currently unused, but exists for possible future use.
+     *
      * Default <code>${project.basedir}</code>
      *
      */
@@ -168,6 +178,8 @@ public class Plugin extends AbstractMojo
 
     /**
      * Base directory for target.
+     *
+     * Currently unused, but exists for possible future use.
      *
      * Default <code>${project.build.directory}</code>
      *
@@ -178,6 +190,11 @@ public class Plugin extends AbstractMojo
     /**
      * A URL path to the base of the REST request resource.
      *
+     * This URL path is the base path, and can be used with multiple
+     * instances (executions) in combination with the
+     * <code>resource</code> element to specify different URL
+     * resources with a common base URL.
+     *
      */
     @Parameter( property = "endpoint" )
     private URI endpoint;
@@ -185,12 +202,29 @@ public class Plugin extends AbstractMojo
     /**
      * A resource path added to the endpoint URL to access the REST resource.
      *
+     * The <code>resource</code> path will be concatenated onto the
+     * <code>endpoint</code> URL to create the full resource path.
+     *
+     * Query parameters can be added to the URL <code>resource</code>
+     * but the preference is to use the <code>queryParams</code> map
+     * to add parameters to the URL.
      */
     @Parameter( property = "resource" )
     private String resource;
 
     /**
      * The method to use for the REST request.
+     *
+     * The REST request method can be configured via the
+     * <code>method</code> tag. Currently only the default setting of
+     * <code>POST</code> is fully tested and supported.  Other methods
+     * requiring data upload (<code>PUT</code>, <code>PATCH</code>)
+     * should be supported identically to the <code>POST</code>
+     * request, but have not been tested.
+     *
+     * <code>GET</code> is planned for the future.  Currently if
+     * <code>GET</code> is used, the code will still require a file to
+     * be uploaded in order to initiate the <code>GET</code> request.
      *
      * Defaults to <code>POST</code>
      *
@@ -199,8 +233,12 @@ public class Plugin extends AbstractMojo
     private String method = "POST";
 
     /**
-     * A list of <code>fileSet</code> rules to select files and directories.
+     * A list of {@link org.apache.maven.model.FileSet} rules to
+     * select files and directories.
      *
+     * This list of <code>fileset</code> elements will be used to
+     * gather all the files to be submitted in the REST request.  One
+     * REST request will be made per file.
      */
     @Parameter( property = "filesets" )
     private List<FileSet> filesets = new ArrayList<FileSet>();
@@ -208,6 +246,13 @@ public class Plugin extends AbstractMojo
     /**
      * A {@link org.apache.maven.model.FileSet} rule to select files to send in the REST request.
      *
+     * The fileset will be used to gather all the files to be
+     * submitted in the REST request.  One REST request will be made
+     * per file.
+     *
+     * Internally, this element will be added to the list of
+     * <code>filesets</code>, so it will be processed in addition to
+     * the list of <code>filesets</code>
      */
     @Parameter( property = "fileset" )
     private FileSet fileset;
@@ -222,8 +267,10 @@ public class Plugin extends AbstractMojo
     private File outputDir;
 
     /**
-     * A <code>map</code> of query parameters to add to the REST request.
+     * A <code>map</code> of query parameters to add to the REST request URL.
      *
+     * The <code>queryParams</code> element will provide a way to add
+     * multiple query params to the final REST URL.
      */
     @Parameter( property = "queryParams" )
     private Map<String, String> queryParams;
@@ -231,14 +278,25 @@ public class Plugin extends AbstractMojo
     /**
      * A <code>map</code> of query headers to add to the REST request.
      *
+     * The <code>headers</code> element will provide a way to add
+     * multiple header elements to the final REST request.
      */
     @Parameter( property = "headers" )
     private Map<String, String> headers;
 
     /**
-     * A {@link org.codehaus.plexus.components.io.filemappers.FileMapper} object to generate output filenames.
+     * A {@link org.codehaus.plexus.components.io.filemappers.FileMapper}
+     * object to generate output filenames.
      *
-     * Provide a FileMapper to generate the output filename which is used to store the REST query results.
+     * Provide a FileMapper to generate the output filename which is
+     * used to store the REST query results.
+     *
+     * Unlike the <code>fileset</code> process, an individual
+     * <code>fileMapper</code> element will be used *instead of* the
+     * <code>fileMappers</code> list.  If multiple
+     * <code>fileMapper</code> elements must be applied to each file,
+     * then do not specify the individual <code>fileMapper</code>
+     * element.
      */
     @Parameter( property = "filemapper" )
     private FileMapper fileMapper;
@@ -253,7 +311,15 @@ public class Plugin extends AbstractMojo
     /**
      * The type of the data sent by the REST request.
      *
-     * The data type of the REST request data. Default <code>MediaType.TEXT_PLAIN_TYPE</code>
+     * The data type of the REST request data. Default
+     * <code>MediaType.TEXT_PLAIN_TYPE</code>
+     *
+     * If this is specified, use the elements for MediaType class:
+     *      &lt;requestType&gt;
+     *        &lt;type&gt;application&lt;/type&gt;
+     *        &lt;subtype&gt;json&lt;/subtype&gt;
+     *      &lt;/requestType&gt;
+     *
      */
     @Parameter
     private MediaType requestType = MediaType.TEXT_PLAIN_TYPE;
@@ -262,21 +328,26 @@ public class Plugin extends AbstractMojo
      * The type of the data returned by the REST request.
      *
      * The expected data type of the REST response. Default <code>MediaType.APPLICATION_OCTET_STREAM_TYPE</code>
+     *
+     * See <code>requestType</code> for example of usage.
      */
     @Parameter
     private MediaType responseType = MediaType.APPLICATION_OCTET_STREAM_TYPE;
 
     /**
-     * The Plexus BuildContext is used to identify files or directories modified since last build, implying
-     * functionality used to define if java generation must be performed again.
+     * The Plexus BuildContext is used to identify files or
+     * directories modified since last build, implying functionality
+     * used to define if java generation must be performed again.
      */
     @Component( role = org.sonatype.plexus.build.incremental.BuildContext.class )
     private BuildContext buildContext;
 
     /**
-     * Note that the execution parameter will be injected ONLY if this plugin is executed as part of a maven standard
-     * lifecycle - as opposed to directly invoked with a direct invocation. When firing this mojo directly (i.e.
-     * {@code mvn xjc:something} or {@code mvn schemagen:something}), the {@code execution} object will not be injected.
+     * Note that the execution parameter will be injected ONLY if this
+     * plugin is executed as part of a maven standard lifecycle - as
+     * opposed to directly invoked with a direct invocation. When
+     * firing this mojo directly (i.e. {@code mvn rest:something} ),
+     * the {@code execution} object will not be injected.
      */
     @Parameter( defaultValue = "${mojoExecution}", readonly = true )
     private MojoExecution execution;
@@ -293,8 +364,9 @@ public class Plugin extends AbstractMojo
     }
 
     /**
-     * The Plexus BuildContext is used to identify files or directories modified since last build, implying
-     * functionality used to define if java generation must be performed again.
+     * The Plexus BuildContext is used to identify files or
+     * directories modified since last build, implying functionality
+     * used to define if java generation must be performed again.
      *
      * @return the active Plexus BuildContext.
      */
@@ -385,7 +457,7 @@ public class Plugin extends AbstractMojo
         return str.toString().substring( 0, -delim.length() );
     }
 
-    public void pipeToFile( InputStream stream, File outputFile ) throws IOException
+    protected void pipeToFile( InputStream stream, File outputFile ) throws IOException
     {
         getLog().info( String.format( "Writing file [%s]", outputFile.getCanonicalPath() ) );
         OutputStream outStream = new FileOutputStream( outputFile );
@@ -403,15 +475,15 @@ public class Plugin extends AbstractMojo
     protected String remapFilename( String filename )
     {
         String remappedName = filename;
-        if ( null != fileMapper )
+        if ( null != getFileMapper() )
         {
-            return fileMapper.getMappedFileName( filename );
+            return getFileMapper().getMappedFileName( filename );
         }
         else
         { // iteratively modify the filename, apply all mappers in order
-            if ( null != fileMappers )
+            if ( null != getFileMappers() )
             {
-                for ( FileMapper fm : fileMappers )
+                for ( FileMapper fm : getFileMappers() )
                 {
                     if ( null != fm )
                     {
@@ -451,6 +523,7 @@ public class Plugin extends AbstractMojo
                 }
             }
         }
+
         catch ( IOException ex )
         {
             getLog().error( String.format( "IOException: [%s]", ex.toString() ) );

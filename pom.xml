@@ -1,10 +1,9 @@
-<project>
-  <modelVersion>4.0.0</modelVersion>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-  <groupId>com.github.cjnygard.mvn</groupId>
-  <artifactId>rest-maven-plugin</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
-  <packaging>maven-plugin</packaging>
+  <modelVersion>4.0.0</modelVersion>
 
   <parent>
     <groupId>org.codehaus.mojo</groupId>
@@ -12,11 +11,49 @@
     <version>38</version>
   </parent>
 
-  <name>REST Request Maven Plugin</name>
+  <groupId>com.github.cjnygard.mvn</groupId>
+  <artifactId>rest-maven-plugin</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>maven-plugin</packaging>
+
+  <name>${project.groupId}:${project.artifactId}</name>
+
+  <description>The REST Request Maven Plugin is meant to provide an
+  easy way to interface to REST services via the POST operation to
+  send data files to the REST URL and retrieve (and store) the
+  results.</description>
+
+  <!-- mvn -Prelease release:clean release:prepare -->
+  <!-- mvn -Prelease release:perform -->
+  <!-- cd target/checkout && mvn -Prelease nexus-staging:release -->
+  <url>http://github.com/cjnygard/rest-maven-plugin</url>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Carl Nygard</name>
+      <email>cjnygard@gmail.com</email>
+      <organization>Self</organization>
+      <organizationUrl>http://github.com/cjnygard</organizationUrl>
+    </developer>
+  </developers>
+  <scm>
+    <developerConnection>scm:git:ssh://git@github.com/cjnygard/rest-maven-plugin.git</developerConnection>
+    <connection>scm:git:https://github.com/cjnygard/rest-maven-plugin.git</connection>
+    <url>https://github.com/cjnygard/rest-maven-plugin.git</url>
+  </scm>
 
   <properties>
-      <!-- Turn off checkstyle formatting -->
+    <!-- Turn off checkstyle formatting -->
     <!--netbeans.checkstyle.format>false</netbeans.checkstyle.format-->
+    <netbeans.checkstyle.format>true</netbeans.checkstyle.format>
+
+    <nexus-staging-maven-plugin.version>1.6.3</nexus-staging-maven-plugin.version>
+    <maven-release-plugin.version>2.5</maven-release-plugin.version>
     <maven-core.version>3.3.9</maven-core.version>
     <maven-compat.version>3.3.9</maven-compat.version>
     <maven-model.version>3.3.9</maven-model.version>
@@ -31,12 +68,13 @@
     <maven-plugin-plugin.version>3.4</maven-plugin-plugin.version>
     <maven-checkstyle-plugin.version>2.16</maven-checkstyle-plugin.version>
     <maven-invoker-plugin.version>2.0.0</maven-invoker-plugin.version>
-
+    <maven-gpg-plugin.version>1.5</maven-gpg-plugin.version>
 
     <jersey-client.version>2.22.1</jersey-client.version>
     <jersey-media-moxy.version>2.0</jersey-media-moxy.version>
     <jersey-json.version>1.19</jersey-json.version>
     <file-management.version>1.2</file-management.version>
+
     <!-- Plexus component versions -->
     <plexus-compiler-api.version>2.5</plexus-compiler-api.version>
     <plexus-utils.version>3.0.22</plexus-utils.version>
@@ -46,7 +84,6 @@
     <plexus-io.version>2.6.1</plexus-io.version>
     <plexus-component-annotations.version>1.6</plexus-component-annotations.version>
     <plexus-component-metadata.version>1.6</plexus-component-metadata.version>
-    <netbeans.checkstyle.format>true</netbeans.checkstyle.format>
   </properties>
 
   <dependencies>
@@ -128,9 +165,7 @@
     </dependency>
 
 
-    <!--
-        Plexus components dependencies.
-    -->
+    <!-- Plexus components dependencies.    -->
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-compiler-api</artifactId>
@@ -161,13 +196,6 @@
       <version>${plexus-io.version}</version>
     </dependency>
 
-    <!--dependency>
-      <groupId>org.codehaus.plexus</groupId>
-      <artifactId>plexus</artifactId>
-      <version>4.0-SNAPSHOT</version>
-      <type>pom</type>
-    </dependency-->
-
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-component-annotations</artifactId>
@@ -185,6 +213,7 @@
       <artifactId>jersey-client</artifactId>
       <version>${jersey-client.version}</version>
     </dependency>
+
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
       <artifactId>jersey-grizzly-connector</artifactId>
@@ -208,16 +237,19 @@
       <artifactId>jersey-json</artifactId>
       <version>${jersey-json.version}</version>
     </dependency>
+
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.2.3</version>
     </dependency>
+
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
       <version>2.4.0</version>
     </dependency>
+
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
@@ -225,6 +257,18 @@
     </dependency>
 
   </dependencies>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
   <profiles>
     <profile>
       <id>run-its</id>
@@ -264,6 +308,80 @@
         </plugins>
       </build>
     </profile>
+
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <version>${maven-release-plugin.version}</version>
+            <configuration>
+              <autoVersionSubmodules>true</autoVersionSubmodules>
+              <useReleaseProfile>false</useReleaseProfile>
+              <releaseProfiles>release</releaseProfiles>
+              <goals>deploy</goals>
+              <!--goals>deploy nexus-staging:release</goals-->
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>${nexus-staging-maven-plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>false</autoReleaseAfterClose>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${maven-gpg-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
     <profile>
       <id>reporting</id>
       <activation>
@@ -274,7 +392,6 @@
       </activation>
       <reporting>
         <plugins>
-          <!-- Apache plugins in alphabetical order -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-checkstyle-plugin</artifactId>
@@ -289,6 +406,7 @@
       </reporting>
     </profile>
   </profiles>
+
   <build>
     <plugins>
       <plugin>
@@ -300,7 +418,6 @@
             <id>default-descriptor</id>
             <phase>process-classes</phase>
           </execution>
-          <!-- if you want to generate help goal -->
           <execution>
             <id>help-goal</id>
             <goals>
@@ -312,6 +429,7 @@
           <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.codehaus.plexus</groupId>
         <artifactId>plexus-component-metadata</artifactId>
