@@ -1,15 +1,15 @@
 <project>
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.cjnygard.mvn</groupId>
+  <groupId>com.github.cjnygard</groupId>
   <artifactId>rest-maven-plugin-test</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>REST Request Maven Plugin Test</name>
 
   <properties>
-    <rest-maven-plugin.version>0.1.0-SNAPSHOT</rest-maven-plugin.version>
+    <rest-maven-plugin.version>0.1.1-SNAPSHOT</rest-maven-plugin.version>
   </properties>
 
   <build>

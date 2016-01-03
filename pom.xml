@@ -9,7 +9,7 @@
     <version>38</version>
   </parent>
 
-  <groupId>com.github.cjnygard.mvn</groupId>
+  <groupId>com.github.cjnygard</groupId>
   <artifactId>rest-maven-plugin</artifactId>
   <version>0.1.1-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
