@@ -4,7 +4,8 @@ Welcome to the rest-maven-plugin plugin for Apache Maven 3.
 
 This plugin is meant to provide an easy way to interface to REST
 services via the POST operation to send data files to the REST URL and
-retrieve (and store) the results.
+retrieve (and store) the results.  It also provides a means to perform a 
+simple GET operation on a URL to retrieve and store the results.
 
 One typical example is to send *.md documentation files to a
 markdown-to-pdf conversion service (see
@@ -18,7 +19,7 @@ locally.
 
 ## Getting started with REST and Maven
 
-To use this plugin and start working with the rest plugin, declare the
+To use this plugin and start working with the rest request, declare the
 plugin and add a dependency on rest-maven-plugin:
 
     <packaging>jar</packaging>
@@ -28,7 +29,7 @@ plugin and add a dependency on rest-maven-plugin:
         <plugin>
           <groupId>com.github.cjnygard.mvn</groupId>
           <artifactId>rest-maven-plugin</artifactId>
-          <version>0.1.0-SNAPSHOT</version>
+          <version>0.1.3</version>
         </plugin>
       </plugins>
     </build>
@@ -37,14 +38,14 @@ plugin and add a dependency on rest-maven-plugin:
       <dependency>
         <groupId>com.github.cjnygard.mvn</groupId>
         <artifactId>rest-maven-plugin</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.3</version>
       </dependency>
     </dependencies>
 
 
 ### Adding source directories
 
-To specify the input fileset you can add the following
+To specify the input *fileset* you can add the following
 configurations.  To use a single fileset:
 
     <configuration>
@@ -56,7 +57,7 @@ configurations.  To use a single fileset:
       </fileset>
     </configuration>
 
-To use multiple filesets, just wrap the single fileset in a <filesets>
+To use multiple filesets, just wrap the single fileset in a *filesets*
 list wrapper:
 
     <configuration>
@@ -110,10 +111,21 @@ the filename matching 'test' to 'result', do the following:
 See the standard FileMapper documentation for more details on typical
 usage.
 
+### Result file for GET request
+
+When performing a GET request with no uploaded file content, it is possible
+to use the *outputFilename* property to specify the filename.  This filename
+will pass through any filename mapping that is defined in the pom.xml.
+The file will be stored in the directory specified by the <outputDir> path.
+
+    <configuration>
+      <outputFilename>save.as.filename.ext</outputFilename>
+    </configuration>
+
 ## REST URL Endpoint
 
-The REST URL endpoint is specified via two parameters, the <endpoint>
-and the <resource>.  The components are separated so that mapping
+The REST URL endpoint is specified via two parameters, the *endpoint*
+and the *resource*.  The components are separated so that mapping
 separate execution configurations to different *resource* extensions
 can still share the same base *endpoint* setting.
 
@@ -125,14 +137,13 @@ can still share the same base *endpoint* setting.
 
 ### REST Method
 
-The REST request method can be configured via the <method> tag.
+The REST request method can be configured via the *method* tag.
 Currently only the default setting POST is fully tested and supported.
 Other methods requiring data upload (PUT, PATCH) should be supported
 identically to the POST request, but have not been tested.
 
-GET is planned for the future.  Currently if GET is used, the code
-will still require a file to be uploaded in order to initiate the GET
-request.
+If GET is used, the code will upload a file if the *fileset* element
+is defined in order to initiate the GET request.
 
     <configuration>
       <method>POST</method>
@@ -142,7 +153,7 @@ request.
 
 The REST request URL can be further modified by adding query
 parameters to the request.  These query parameters can be configured
-via the <queryParams> tag, which is a map of key/value pairs.
+via the *queryParams* tag, which is a map of key/value pairs.
 
 For example, to add the propertyies n=3 and addRequired=1 to the REST
 request URL, the following configuration can be used:
@@ -158,7 +169,7 @@ request URL, the following configuration can be used:
 
 The REST request URL can be further modified by adding header
 parameters to the request.  These header parameters can be configured
-via the <headers> tag, which is a map of key/value pairs.
+via the *headers* tag, which is a map of key/value pairs.
 
     <configuration>
       <headers>
@@ -169,7 +180,7 @@ via the <headers> tag, which is a map of key/value pairs.
 ### REST Request/Response types
 
 The REST request and response types can be configured via the
-<requestType> and <responseType> tags.  Defaults for request and
+*requestType* and *responseType* tags.  Defaults for request and
 response types are 'text/plain' and 'application/octet-stream'
 respectively.
 
@@ -188,6 +199,3 @@ object.  For example:
       </responseType>
     </configuration>
 
-## Future plans
-
- * Expand support for GET request
