@@ -28,6 +28,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -36,37 +37,37 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status.Family;
+
 import org.apache.commons.io.IOUtils;
-import org.apache.maven.model.FileSet;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.project.MavenProjectHelper;
-//import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.util.FileUtils;
-import org.sonatype.plexus.build.incremental.BuildContext;
-import org.codehaus.plexus.components.io.filemappers.FileMapper;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.FileSet;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecution;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.MavenProjectHelper;
 import org.apache.maven.settings.Settings;
 //import org.codehaus.plexus.components.io.filemappers.AbstractFileMapper;
 //import org.codehaus.plexus.components.io.filemappers.IdentityMapper;
+import org.codehaus.plexus.components.io.filemappers.FileMapper;
+//import org.codehaus.plexus.component.annotations.Component;
+import org.codehaus.plexus.util.FileUtils;
+import org.sonatype.plexus.build.incremental.BuildContext;
 
 /**
  * Make REST request, sending file contents and saving results to a file.
  *
- * This plugin is meant to provide an easy way to interface to REST
- * services via the POST operation to send data files to the REST URL
- * and retrieve (and store) the results.
+ * This plugin is meant to provide an easy way to interface to REST services via
+ * the POST operation to send data files to the REST URL and retrieve (and
+ * store) the results.
  *
- * One typical example is to send *.md documentation files to a
- * markdown-to-pdf conversion service (see
- * http://github.com/cjnygard/md2pdf) and store the resulting *.pdf
- * file locally.
+ * One typical example is to send *.md documentation files to a markdown-to-pdf
+ * conversion service (see http://github.com/cjnygard/md2pdf) and store the
+ * resulting *.pdf file locally.
  */
 @Mojo( name = "rest-request" )
 public class Plugin extends AbstractMojo
@@ -91,14 +92,23 @@ public class Plugin extends AbstractMojo
         {
             try
             {
-                File directory = new File( fs.getDirectory() );
-                String includes = toString( fs.getIncludes() );
-                String excludes = toString( fs.getExcludes() );
-                return FileUtils.getFiles( directory, includes, excludes );
+                if ( fs.getDirectory() != null )
+                {
+                    File directory = new File( fs.getDirectory() );
+                    String includes = toString( fs.getIncludes() );
+                    String excludes = toString( fs.getExcludes() );
+                    return FileUtils.getFiles( directory, includes, excludes );
+                }
+                else
+                {
+                    getLog().warn( String.format( "Fileset [%s] directory empty", fs.toString() ) );
+                    return new ArrayList<>();
+                }
             }
             catch ( IOException e )
             {
-                throw new MojoExecutionException( "Unable to get paths to files", e );
+                throw new MojoExecutionException( String.format( "Unable to get paths to fileset [%s]", fs.toString() ),
+                        e );
             }
         }
 
@@ -117,24 +127,21 @@ public class Plugin extends AbstractMojo
         }
     }
 
-    public final class FileErrorInfo
+    public class ErrorInfo
     {
 
-        private final String filename;
         private final int errorCode;
         private final String message;
 
-        public FileErrorInfo( String fn, int code, String msg )
+        public ErrorInfo( int code, String msg )
         {
             errorCode = code;
-            filename = fn;
             message = msg;
         }
 
-        public FileErrorInfo( String fn, String msg )
+        public ErrorInfo( String msg )
         {
             errorCode = -1;
-            filename = fn;
             message = msg;
         }
 
@@ -142,7 +149,39 @@ public class Plugin extends AbstractMojo
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.append( filename ).append( " [" ).append( errorCode ).append( ":" ).append( message ).append( "]" );
+            sb.append( " [" ).append( errorCode ).append( ":" ).append( message ).append( "]" );
+            return sb.toString();
+        }
+    }
+
+    public final class FileErrorInfo extends ErrorInfo
+    {
+
+        private final String filename;
+
+        public FileErrorInfo( String fn, ErrorInfo error )
+        {
+            super( error.errorCode, error.message );
+            filename = fn;
+        }
+
+        public FileErrorInfo( String fn, int code, String msg )
+        {
+            super( code, msg );
+            filename = fn;
+        }
+
+        public FileErrorInfo( String fn, String msg )
+        {
+            super( msg );
+            filename = fn;
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append( filename ).append( super.toString() );
             return sb.toString();
         }
     }
@@ -190,10 +229,9 @@ public class Plugin extends AbstractMojo
     /**
      * A URL path to the base of the REST request resource.
      *
-     * This URL path is the base path, and can be used with multiple
-     * instances (executions) in combination with the
-     * <code>resource</code> element to specify different URL
-     * resources with a common base URL.
+     * This URL path is the base path, and can be used with multiple instances
+     * (executions) in combination with the <code>resource</code> element to
+     * specify different URL resources with a common base URL.
      *
      */
     @Parameter( property = "endpoint" )
@@ -205,9 +243,9 @@ public class Plugin extends AbstractMojo
      * The <code>resource</code> path will be concatenated onto the
      * <code>endpoint</code> URL to create the full resource path.
      *
-     * Query parameters can be added to the URL <code>resource</code>
-     * but the preference is to use the <code>queryParams</code> map
-     * to add parameters to the URL.
+     * Query parameters can be added to the URL <code>resource</code> but the
+     * preference is to use the <code>queryParams</code> map to add parameters
+     * to the URL.
      */
     @Parameter( property = "resource" )
     private String resource;
@@ -215,16 +253,14 @@ public class Plugin extends AbstractMojo
     /**
      * The method to use for the REST request.
      *
-     * The REST request method can be configured via the
-     * <code>method</code> tag. Currently only the default setting of
-     * <code>POST</code> is fully tested and supported.  Other methods
-     * requiring data upload (<code>PUT</code>, <code>PATCH</code>)
-     * should be supported identically to the <code>POST</code>
-     * request, but have not been tested.
+     * The REST request method can be configured via the <code>method</code>
+     * tag. Currently only the <code>POST</code> and <code>GET</code> requests
+     * are fully tested and supported. Other methods requiring data upload
+     * (<code>PUT</code>, <code>PATCH</code>) should be supported identically to
+     * the <code>POST</code> request, but have not been tested.
      *
-     * <code>GET</code> is planned for the future.  Currently if
-     * <code>GET</code> is used, the code will still require a file to
-     * be uploaded in order to initiate the <code>GET</code> request.
+     * If <code>GET</code> is used, the code will upload a file if the
+     * <code>fileset<code> is defined when making the <code>GET</code> request.
      *
      * Defaults to <code>POST</code>
      *
@@ -233,26 +269,26 @@ public class Plugin extends AbstractMojo
     private String method = "POST";
 
     /**
-     * A list of {@link org.apache.maven.model.FileSet} rules to
-     * select files and directories.
+     * A list of {@link org.apache.maven.model.FileSet} rules to select files
+     * and directories.
      *
-     * This list of <code>fileset</code> elements will be used to
-     * gather all the files to be submitted in the REST request.  One
-     * REST request will be made per file.
+     * This list of <code>fileset</code> elements will be used to gather all the
+     * files to be submitted in the REST request. One REST request will be made
+     * per file.
      */
     @Parameter( property = "filesets" )
-    private List<FileSet> filesets = new ArrayList<FileSet>();
+    private List<FileSet> filesets = new ArrayList<>();
 
     /**
-     * A {@link org.apache.maven.model.FileSet} rule to select files to send in the REST request.
+     * A {@link org.apache.maven.model.FileSet} rule to select files to send in
+     * the REST request.
      *
-     * The fileset will be used to gather all the files to be
-     * submitted in the REST request.  One REST request will be made
-     * per file.
+     * The fileset will be used to gather all the files to be submitted in the
+     * REST request. One REST request will be made per file.
      *
      * Internally, this element will be added to the list of
-     * <code>filesets</code>, so it will be processed in addition to
-     * the list of <code>filesets</code>
+     * <code>filesets</code>, so it will be processed in addition to the list of
+     * <code>filesets</code>
      */
     @Parameter( property = "fileset" )
     private FileSet fileset;
@@ -267,10 +303,20 @@ public class Plugin extends AbstractMojo
     private File outputDir;
 
     /**
+     * Filename where REST GET query result files are stored, if no fileset is
+     * defined.
+     *
+     * Defaults to <code>rest.file</code>
+     *
+     */
+    @Parameter( defaultValue = "rest.file", property = "outputFilename" )
+    private File outputFilename;
+
+    /**
      * A <code>map</code> of query parameters to add to the REST request URL.
      *
-     * The <code>queryParams</code> element will provide a way to add
-     * multiple query params to the final REST URL.
+     * The <code>queryParams</code> element will provide a way to add multiple
+     * query params to the final REST URL.
      */
     @Parameter( property = "queryParams" )
     private Map<String, String> queryParams;
@@ -278,25 +324,24 @@ public class Plugin extends AbstractMojo
     /**
      * A <code>map</code> of query headers to add to the REST request.
      *
-     * The <code>headers</code> element will provide a way to add
-     * multiple header elements to the final REST request.
+     * The <code>headers</code> element will provide a way to add multiple
+     * header elements to the final REST request.
      */
     @Parameter( property = "headers" )
     private Map<String, String> headers;
 
     /**
-     * A {@link org.codehaus.plexus.components.io.filemappers.FileMapper}
-     * object to generate output filenames.
+     * A {@link org.codehaus.plexus.components.io.filemappers.FileMapper} object
+     * to generate output filenames.
      *
-     * Provide a FileMapper to generate the output filename which is
-     * used to store the REST query results.
+     * Provide a FileMapper to generate the output filename which is used to
+     * store the REST query results.
      *
      * Unlike the <code>fileset</code> process, an individual
      * <code>fileMapper</code> element will be used *instead of* the
-     * <code>fileMappers</code> list.  If multiple
-     * <code>fileMapper</code> elements must be applied to each file,
-     * then do not specify the individual <code>fileMapper</code>
-     * element.
+     * <code>fileMappers</code> list. If multiple <code>fileMapper</code>
+     * elements must be applied to each file, then do not specify the individual
+     * <code>fileMapper</code> element.
      */
     @Parameter( property = "filemapper" )
     private FileMapper fileMapper;
@@ -315,11 +360,13 @@ public class Plugin extends AbstractMojo
      * <code>MediaType.TEXT_PLAIN_TYPE</code>
      *
      * If this is specified, use the elements for MediaType class:
-     *      &lt;requestType&gt;
-     *        &lt;type&gt;application&lt;/type&gt;
-     *        &lt;subtype&gt;json&lt;/subtype&gt;
-     *      &lt;/requestType&gt;
-     *
+     * 
+     * <pre>
+     *     &lt;requestType&gt;
+     *       &lt;type&gt;application&lt;/type&gt;
+     *       &lt;subtype&gt;json&lt;/subtype&gt;
+     *     &lt;/requestType&gt;
+     * </pre>
      */
     @Parameter
     private MediaType requestType = MediaType.TEXT_PLAIN_TYPE;
@@ -327,7 +374,8 @@ public class Plugin extends AbstractMojo
     /**
      * The type of the data returned by the REST request.
      *
-     * The expected data type of the REST response. Default <code>MediaType.APPLICATION_OCTET_STREAM_TYPE</code>
+     * The expected data type of the REST response. Default
+     * <code>MediaType.APPLICATION_OCTET_STREAM_TYPE</code>
      *
      * See <code>requestType</code> for example of usage.
      */
@@ -335,19 +383,19 @@ public class Plugin extends AbstractMojo
     private MediaType responseType = MediaType.APPLICATION_OCTET_STREAM_TYPE;
 
     /**
-     * The Plexus BuildContext is used to identify files or
-     * directories modified since last build, implying functionality
-     * used to define if java generation must be performed again.
+     * The Plexus BuildContext is used to identify files or directories modified
+     * since last build, implying functionality used to define if java
+     * generation must be performed again.
      */
     @Component( role = org.sonatype.plexus.build.incremental.BuildContext.class )
     private BuildContext buildContext;
 
     /**
-     * Note that the execution parameter will be injected ONLY if this
-     * plugin is executed as part of a maven standard lifecycle - as
-     * opposed to directly invoked with a direct invocation. When
-     * firing this mojo directly (i.e. {@code mvn rest:something} ),
-     * the {@code execution} object will not be injected.
+     * Note that the execution parameter will be injected ONLY if this plugin is
+     * executed as part of a maven standard lifecycle - as opposed to directly
+     * invoked with a direct invocation. When firing this mojo directly (i.e.
+     * {@code mvn rest:something} ), the {@code execution} object will not be
+     * injected.
      */
     @Parameter( defaultValue = "${mojoExecution}", readonly = true )
     private MojoExecution execution;
@@ -356,17 +404,17 @@ public class Plugin extends AbstractMojo
     {
         if ( objectOrNull == null )
         {
-            getLog().error( String.format( "Found null [%s]: Maven @Component injection was not done properly.",
-                                           objectName ) );
+            getLog().error(
+                    String.format( "Found null [%s]: Maven @Component injection was not done properly.", objectName ) );
         }
 
         return objectOrNull;
     }
 
     /**
-     * The Plexus BuildContext is used to identify files or
-     * directories modified since last build, implying functionality
-     * used to define if java generation must be performed again.
+     * The Plexus BuildContext is used to identify files or directories modified
+     * since last build, implying functionality used to define if java
+     * generation must be performed again.
      *
      * @return the active Plexus BuildContext.
      */
@@ -401,13 +449,17 @@ public class Plugin extends AbstractMojo
                 filesets = new ArrayList<>();
             }
             getFilesets().add( getFileset() );
+
         }
         if ( null != getFilesets() )
         {
             for ( FileSet fs : getFilesets() )
             {
-                FileSetTransformer fileMgr = new FileSetTransformer( fs );
-                files.addAll( fileMgr.toFileList() );
+                if ( (null != fs) && (null != fs.getDirectory()) )
+                {
+                    FileSetTransformer fileMgr = new FileSetTransformer( fs );
+                    files.addAll( fileMgr.toFileList() );
+                }
             }
         }
         return files;
@@ -509,15 +561,14 @@ public class Plugin extends AbstractMojo
             {
                 if ( outputDir.isFile() )
                 {
-                    getLog().error( String.format( "Error: [%s] is not a directory",
-                                                   outputDir.getCanonicalPath() ) );
+                    getLog().error( String.format( "Error: [%s] is not a directory", outputDir.getCanonicalPath() ) );
                 }
                 else
                 {
                     if ( !outputDir.mkdirs() )
                     {
-                        getLog().error( String.format( "Error: Unable to create path[%s]",
-                                                       outputDir.getCanonicalPath() ) );
+                        getLog().error(
+                                String.format( "Error: Unable to create path[%s]", outputDir.getCanonicalPath() ) );
 
                     }
                 }
@@ -527,8 +578,9 @@ public class Plugin extends AbstractMojo
         catch ( IOException ex )
         {
             getLog().error( String.format( "IOException: [%s]", ex.toString() ) );
-            throw new MojoExecutionException( String.format( "Unable to create destination dir [%s]: [%s]",
-                                                             outputDir.toString(), ex.toString() ) );
+            throw new MojoExecutionException(
+                    String.format( "Unable to create destination dir [%s]: [%s]", outputDir.toString(),
+                            ex.toString() ) );
         }
         return true;
     }
@@ -538,13 +590,6 @@ public class Plugin extends AbstractMojo
     {
         validateOutputDir();
         getLog().info( String.format( "Output dir [%s]", getOutputDir().toString() ) );
-
-        List<File> files = getFilesToProcess();
-        if ( null == files || files.size() <= 0 )
-        {
-            getLog().info( "No files to process" );
-            return;
-        }
 
         Client client = ClientBuilder.newClient();
 
@@ -565,9 +610,7 @@ public class Plugin extends AbstractMojo
             }
         }
 
-        Invocation.Builder builder = baseTarget
-                           .request( getRequestType() )
-                           .accept( getResponseType() );
+        Invocation.Builder builder = baseTarget.request( getRequestType() ).accept( getResponseType() );
         // load up the header info
         if ( null != getHeaders() )
         {
@@ -580,44 +623,70 @@ public class Plugin extends AbstractMojo
         }
         getLog().info( String.format( "Endpoint: [%s %s]", getMethod(), baseTarget.getUri() ) );
 
-        List<FileErrorInfo> errorFiles = new ArrayList<>();
-        for ( File f : files )
+        List<ErrorInfo> errorFiles = new ArrayList<>();
+        List<File> files = getFilesToProcess();
+        if ( (null == files) || (files.size() <= 0) )
         {
-            getLog().debug( String.format( "Submitting file [%s]", f.toString() ) );
-            Response response = builder.method( getMethod(), Entity.entity( f, getRequestType() ) );
-
-            if ( response.getStatusInfo().getFamily() == Family.SUCCESSFUL )
+            if ( !getMethod().equalsIgnoreCase( "GET" ) )
             {
-                getLog().debug( String.format( "Status: [%d]", response.getStatus() ) );
-                InputStream in = response.readEntity( InputStream.class );
-                try
-                {
-                    String outputFilename = remapFilename( f.getName() );
-                    File of = new File( getOutputDir(), outputFilename );
-                    pipeToFile( in, of );
-                }
-                catch ( IOException ex )
-                {
-                    getLog().debug( String.format( "IOException: [%s]", ex.toString() ) );
-                    errorFiles.add( new FileErrorInfo( f.getPath(),
-                                                       String.format( "IOException: [%s]", ex.getMessage() ) ) );
-                }
-
+                getLog().info( "No files to process" );
+                return;
             }
             else
             {
-                getLog().debug( String.format( "Error code: [%d]", response.getStatus() ) );
-                getLog().debug( response.getEntity().toString() );
-                errorFiles.add( new FileErrorInfo( f.getPath(), response.getStatus(),
-                                                   response.getEntity().toString() ) );
+                getLog().debug( "GET request" );
+                ErrorInfo result = processResponse( builder.method( getMethod() ),
+                        remapFilename( getOutputFilename().getName() ) );
+                if ( result != null )
+                {
+                    errorFiles.add( result );
+                }
+            }
+        }
+
+        for ( File f : files )
+        {
+            getLog().debug( String.format( "Submitting file [%s]", f.toString() ) );
+            ErrorInfo result = processResponse( builder.method( getMethod(), Entity.entity( f, getRequestType() ) ),
+                    remapFilename( f.getName() ) );
+            if ( result != null )
+            {
+                errorFiles.add( new FileErrorInfo( f.getPath(), result ) );
             }
         }
 
         if ( errorFiles.size() > 0 )
         {
-            throw new MojoExecutionException( String.format( "Unable to process files:\n%s",
-                                                             wrap( "  ", "\n", errorFiles ) ) );
+            throw new MojoExecutionException(
+                    String.format( "Unable to process files:\n%s", wrap( "  ", "\n", errorFiles ) ) );
         }
+    }
+
+    private ErrorInfo processResponse( Response response, String outputFilename )
+    {
+        if ( response.getStatusInfo().getFamily() == Family.SUCCESSFUL )
+        {
+            getLog().debug( String.format( "Status: [%d]", response.getStatus() ) );
+            InputStream in = response.readEntity( InputStream.class );
+            try
+            {
+                File of = new File( getOutputDir(), outputFilename );
+                pipeToFile( in, of );
+            }
+            catch ( IOException ex )
+            {
+                getLog().debug( String.format( "IOException: [%s]", ex.toString() ) );
+                return new ErrorInfo( String.format( "IOException: [%s]", ex.getMessage() ) );
+            }
+
+        }
+        else
+        {
+            getLog().warn( String.format( "Error code: [%d]", response.getStatus() ) );
+            getLog().debug( response.getEntity().toString() );
+            return new ErrorInfo( response.getStatus(), response.getEntity().toString() );
+        }
+        return null;
     }
 
     /**
@@ -658,6 +727,14 @@ public class Plugin extends AbstractMojo
     public File getOutputDir()
     {
         return outputDir;
+    }
+
+    /**
+     * @return the outputFilename
+     */
+    public File getOutputFilename()
+    {
+        return outputFilename;
     }
 
     /**
@@ -741,7 +818,8 @@ public class Plugin extends AbstractMojo
     }
 
     /**
-     * @param method the method to set
+     * @param method
+     *            the method to set
      */
     public void setMethod( String method )
     {
