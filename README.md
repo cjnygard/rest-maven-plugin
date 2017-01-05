@@ -27,7 +27,7 @@ plugin and add a dependency on rest-maven-plugin:
     <build>
       <plugins>
         <plugin>
-          <groupId>com.github.cjnygard.mvn</groupId>
+          <groupId>com.github.cjnygard</groupId>
           <artifactId>rest-maven-plugin</artifactId>
           <version>0.1.4</version>
         </plugin>
@@ -36,7 +36,7 @@ plugin and add a dependency on rest-maven-plugin:
     ....
     <dependencies>
       <dependency>
-        <groupId>com.github.cjnygard.mvn</groupId>
+        <groupId>com.github.cjnygard</groupId>
         <artifactId>rest-maven-plugin</artifactId>
         <version>0.1.4</version>
       </dependency>
