@@ -13,7 +13,7 @@
   <name>REST Request Maven Plugin Test</name>
 
   <properties>
-    <rest-maven-plugin.version>0.1.5-SNAPSHOT</rest-maven-plugin.version>
+    <rest-maven-plugin.version>${project.version}</rest-maven-plugin.version>
   </properties>
 
   <dependencies>
