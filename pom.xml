@@ -73,16 +73,16 @@
     <jersey-media-moxy.version>2.0</jersey-media-moxy.version>
     <jersey-json.version>1.19</jersey-json.version>
     <file-management.version>1.2</file-management.version>
+    <apache-commons-text.version>1.8</apache-commons-text.version>
 
     <!-- Plexus component versions -->
-    <plexus-compiler-api.version>2.5</plexus-compiler-api.version>
-    <plexus-utils.version>3.0.22</plexus-utils.version>
+    <plexus-compiler-api.version>2.8.5</plexus-compiler-api.version>
+    <plexus-utils.version>3.3.0</plexus-utils.version>
     <plexus-build-api.version>0.0.7</plexus-build-api.version>
-    <plexus.version>3.0.22</plexus.version>
-    <plexus-resources.version>1.0.1</plexus-resources.version>
-    <plexus-io.version>2.6.1</plexus-io.version>
-    <plexus-component-annotations.version>1.6</plexus-component-annotations.version>
-    <plexus-component-metadata.version>1.6</plexus-component-metadata.version>
+    <plexus-resources.version>1.1.0</plexus-resources.version>
+    <plexus-io.version>3.2.0</plexus-io.version>
+    <plexus-component-annotations.version>2.1.0</plexus-component-annotations.version>
+    <plexus-component-metadata.version>2.1.0</plexus-component-metadata.version>
   </properties>
 
   <dependencies>
@@ -253,6 +253,12 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
       <version>2.2.3</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>${apache-commons-text.version}</version>
     </dependency>
 
   </dependencies>

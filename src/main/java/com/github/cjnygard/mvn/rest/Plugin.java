@@ -28,6 +28,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -39,6 +40,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status.Family;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringSubstitutor;
+
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.plugin.AbstractMojo;
@@ -50,7 +53,14 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
+
 import org.apache.maven.settings.Settings;
+import org.apache.maven.settings.Server;
+import org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest;
+import org.apache.maven.settings.crypto.SettingsDecrypter;
+import org.apache.maven.settings.crypto.SettingsDecryptionRequest;
+import org.apache.maven.settings.crypto.SettingsDecryptionResult;
+
 //import org.codehaus.plexus.components.io.filemappers.AbstractFileMapper;
 //import org.codehaus.plexus.components.io.filemappers.IdentityMapper;
 import org.codehaus.plexus.components.io.filemappers.FileMapper;
@@ -202,6 +212,9 @@ public class Plugin extends AbstractMojo
     private Settings settings;
 
     @Component
+    private SettingsDecrypter settingsDecrypter;
+
+    @Component
     private MavenProjectHelper projectHelper;
 
     /**
@@ -225,6 +238,16 @@ public class Plugin extends AbstractMojo
      */
     @Parameter( defaultValue = "${project.build.directory}", readonly = true )
     private File target;
+
+    /**
+     * A server Id corresponding to an entry in the settings.xml file, to obtain credentials.
+     *
+     * Decrypted credentials will be placed in properties <code>{serverId}.username</code>
+     * and <code>{serverid}.password</code> and may then be referenced in headers and
+     * queryParams.
+     */
+    @Parameter( property = "serverId" )
+    private String serverId;
 
     /**
      * A URL path to the base of the REST request resource.
@@ -585,11 +608,38 @@ public class Plugin extends AbstractMojo
         return true;
     }
 
+
+    /**
+     * Provides access to server credentials encrypted within settings.xml.
+     */
+    private Server decryptServerCredentials(String serverId) throws MojoExecutionException {
+        SettingsDecryptionRequest request = new DefaultSettingsDecryptionRequest( findServer(serverId) );
+        SettingsDecryptionResult result = settingsDecrypter.decrypt(request);
+        return result.getServer();
+    }
+
+    private Server findServer(String serverId) throws MojoExecutionException {
+        Server server = null;
+        for (Server s : settings.getServers()) {
+            if (s.getId().equals(serverId)) {
+                return( s );
+            }
+        }
+        throw new MojoExecutionException("serverId not found in settings: " + serverId);
+    }
+
     @Override
     public void execute() throws MojoExecutionException
     {
         validateOutputDir();
         getLog().info( String.format( "Output dir [%s]", getOutputDir().toString() ) );
+
+        Properties mvnProps = project.getProperties();
+        if (serverId != null && serverId.length() > 0) {
+            Server serverCreds = decryptServerCredentials(serverId);
+            mvnProps.put(serverId+".username", serverCreds.getUsername());
+            mvnProps.put(serverId+".password", serverCreds.getPassword());
+        }
 
         Client client = ClientBuilder.newClient();
 
@@ -599,12 +649,14 @@ public class Plugin extends AbstractMojo
             getLog().debug( String.format( "Setting resource [%s]", getResource() ) );
             baseTarget = baseTarget.path( getResource() );
         }
+
         // Load up the query parameters if they exist
         if ( null != getQueryParams() )
         {
             for ( String k : getQueryParams().keySet() )
             {
                 String param = getQueryParams().get( k );
+                param = StringSubstitutor.replace(param, mvnProps);
                 baseTarget = baseTarget.queryParam( k, param );
                 getLog().debug( String.format( "Param [%s:%s]", k, param ) );
             }
@@ -617,6 +669,7 @@ public class Plugin extends AbstractMojo
             for ( String k : getHeaders().keySet() )
             {
                 String hdr = getHeaders().get( k );
+                hdr = StringSubstitutor.replace(hdr, mvnProps);
                 builder = builder.header( k, hdr );
                 getLog().debug( String.format( "Header [%s:%s]", k, hdr ) );
             }
