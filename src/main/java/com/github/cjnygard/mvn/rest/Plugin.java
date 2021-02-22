@@ -25,10 +25,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import javax.net.ssl.*;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -56,6 +61,8 @@ import org.apache.maven.settings.Settings;
 import org.codehaus.plexus.components.io.filemappers.FileMapper;
 //import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.util.FileUtils;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientProperties;
 import org.sonatype.plexus.build.incremental.BuildContext;
 
 /**
@@ -236,6 +243,10 @@ public class Plugin extends AbstractMojo
      */
     @Parameter( property = "endpoint" )
     private URI endpoint;
+
+    @Parameter(defaultValue = "true")
+    private boolean validateServerCert;
+
 
     /**
      * A resource path added to the endpoint URL to access the REST resource.
@@ -591,9 +602,27 @@ public class Plugin extends AbstractMojo
         validateOutputDir();
         getLog().info( String.format( "Output dir [%s]", getOutputDir().toString() ) );
 
-        Client client = ClientBuilder.newClient();
+        Client client;
+        ClientConfig config = new ClientConfig();
+        config.register(FollowRedirectFilter.class);
+        URI ep = getEndpoint();
+        if ("https".equals(ep.getScheme()) && !validateServerCert) {
+            TrustManager[] trustAllCerts = { new InsecureTrustManager() };
+            SSLContext sc = null;//Java 8
+            try {
+                sc = SSLContext.getInstance("TLSv1");
+                sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            } catch (NoSuchAlgorithmException | KeyManagementException e) {
+                e.printStackTrace();
+            }
+            HostnameVerifier allHostsValid = new InsecureHostnameVerifier();
+            client = ClientBuilder.newBuilder().sslContext(sc).hostnameVerifier(allHostsValid).withConfig(config).build();
+        } else {
+            client = ClientBuilder.newClient(config);
+        }
 
         WebTarget baseTarget = client.target( getEndpoint() );
+        baseTarget.property(ClientProperties.FOLLOW_REDIRECTS, Boolean.TRUE);
         if ( null != getResource() )
         {
             getLog().debug( String.format( "Setting resource [%s]", getResource() ) );
