@@ -627,14 +627,14 @@ public class Plugin extends AbstractMojo
         List<File> files = getFilesToProcess();
         if ( (null == files) || (files.size() <= 0) )
         {
-            if ( !getMethod().equalsIgnoreCase( "GET" ) )
+            if ( !getMethod().equalsIgnoreCase( "GET" ) && !getMethod().equalsIgnoreCase( "DELETE" ) )
             {
                 getLog().info( "No files to process" );
                 return;
             }
             else
             {
-                getLog().debug( "GET request" );
+                getLog().debug( String.format( "%s request", getMethod() ) );
                 ErrorInfo result = processResponse( builder.method( getMethod() ),
                         remapFilename( getOutputFilename().getName() ) );
                 if ( result != null )
