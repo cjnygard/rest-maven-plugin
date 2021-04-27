@@ -11,7 +11,7 @@
 
   <groupId>com.github.cjnygard</groupId>
   <artifactId>rest-maven-plugin</artifactId>
-  <version>0.1.5-SNAPSHOT</version>
+  <version>0.1.5</version>
   <packaging>maven-plugin</packaging>
 
   <name>${project.groupId}:${project.artifactId}</name>
