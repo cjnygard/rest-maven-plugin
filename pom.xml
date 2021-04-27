@@ -11,7 +11,7 @@
 
   <groupId>com.github.daqingshu</groupId>
   <artifactId>rest-maven-plugin</artifactId>
-  <version>0.1.5</version>
+  <version>0.1.6</version>
   <packaging>maven-plugin</packaging>
 
   <name>${project.groupId}:${project.artifactId}</name>
